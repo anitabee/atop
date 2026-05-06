@@ -2,6 +2,7 @@
 
 A real-time system performance monitor for macOS, written in Go. Inspired by [asitop](https://github.com/tlkh/asitop) — no `sudo` required.
 
+[![CI](https://github.com/anitabendelja/atop/actions/workflows/ci.yml/badge.svg)](https://github.com/anitabendelja/atop/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/go-1.21+-00ADD8?logo=go)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
