@@ -143,15 +143,15 @@ func (m *Model) updateBarWidths() {
 		w = 60
 	}
 	innerW := w - 4
-	cpuBarW := max(6, innerW-18)
-	memBarW := max(6, innerW-32)
+	cpuBarW := max(6, innerW-(2+labelColW+2+6))        // indent + label + gap + pct
+	memBarW := max(6, innerW-(2+labelColW+2+6+3+6+2+6)) // indent + label + gap + size + " / " + size + gap + pct
 
 	leftOuter := (w - 1) / 2
 	rightOuter := w - 1 - leftOuter
 	leftInner := leftOuter - 4
 	rightInner := rightOuter - 4
-	diskBarW := max(4, leftInner-22)
-	netBarW := max(4, rightInner-22)
+	diskBarW := max(4, leftInner-(2+labelColW+2+11)) // indent + label + gap + rate (≤10 chars + 1 spare)
+	netBarW := max(4, rightInner-(2+labelColW+2+10)) // indent + label + gap + rate (≤10 chars)
 
 	m.cpuBar.SetWidth(cpuBarW)
 	m.cpuPBar.SetWidth(cpuBarW)
@@ -194,7 +194,7 @@ func (m *Model) ensureBarSlices() {
 		if w < 60 {
 			w = 60
 		}
-		gpuBarW := max(6, (w-4)-18)
+		gpuBarW := max(6, (w-4)-(2+labelColW+2+6))
 		m.gpuDevBars = make([]progress.Model, len(s.GPUs))
 		m.gpuRenBars = make([]progress.Model, len(s.GPUs))
 		m.gpuTilBars = make([]progress.Model, len(s.GPUs))

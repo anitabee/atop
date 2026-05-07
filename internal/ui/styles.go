@@ -68,6 +68,10 @@ func barColorForPct(pct float64) color.Color {
 	return barGradient[idx]
 }
 
+// labelColW is the fixed width of every label column (e.g. "Renderer: ").
+// All label strings must be padded to this width so bars start at the same column.
+const labelColW = 10
+
 // Reusable style shortcuts.
 var (
 	stLabel    = lipgloss.NewStyle().Foreground(colorWhite)

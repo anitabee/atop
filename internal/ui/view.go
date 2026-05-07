@@ -67,7 +67,7 @@ func (m Model) renderCPU(w int) string {
 	header := sectionTitle(label) + strings.Repeat(" ", gap) + stSecondary.Render(loadStr)
 
 	content := header + "\n" +
-		"  " + stLabel.Render("Total:  ") + m.cpuBar.ViewAs(s.CPUTotal/100) + "  " + styledPct(s.CPUTotal)
+		"  " + stLabel.Render("Total:    ") + m.cpuBar.ViewAs(s.CPUTotal/100) + "  " + styledPct(s.CPUTotal)
 
 	// Apple Silicon P-core / E-core breakdown
 	if s.IsAppleSi && s.NumPCores > 0 && s.NumECores > 0 && len(s.CPUCores) > 0 {
@@ -79,8 +79,8 @@ func (m Model) renderCPU(w int) string {
 		pAvg := avgSlice(s.CPUCores[:pEnd])
 		eAvg := avgSlice(s.CPUCores[eStart:eEnd])
 
-		content += "\n" + "  " + stLabel.Render("P-Core: ") + m.cpuPBar.ViewAs(pAvg/100) + "  " + styledPct(pAvg)
-		content += "\n" + "  " + stLabel.Render("E-Core: ") + m.cpuEBar.ViewAs(eAvg/100) + "  " + styledPct(eAvg)
+		content += "\n" + "  " + stLabel.Render("P-Core:   ") + m.cpuPBar.ViewAs(pAvg/100) + "  " + styledPct(pAvg)
+		content += "\n" + "  " + stLabel.Render("E-Core:   ") + m.cpuEBar.ViewAs(eAvg/100) + "  " + styledPct(eAvg)
 	}
 
 	// Per-core grid
@@ -91,7 +91,7 @@ func (m Model) renderCPU(w int) string {
 		}
 	}
 
-	return panelStyle.Width(innerW).Render(content)
+	return panelStyle.Width(w).Render(content)
 }
 
 // LIPGLOSS THEME
@@ -126,7 +126,6 @@ func (m Model) renderGPU(w int) string {
 	if len(s.GPUs) == 0 {
 		return ""
 	}
-	innerW := w - 4
 
 	var content string
 	for i, g := range s.GPUs {
@@ -153,23 +152,22 @@ func (m Model) renderGPU(w int) string {
 		}
 	}
 
-	return panelStyle.Width(innerW).Render(content)
+	return panelStyle.Width(w).Render(content)
 }
 
 // LIPGLOSS THEME
 func (m Model) renderMemory(w int) string {
 	s := m.snap
-	innerW := w - 4
 
-	ramLine := "  " + stLabel.Render("RAM:  ") + m.ramBar.ViewAs(s.MemPercent/100) +
+	ramLine := "  " + stLabel.Render("RAM:      ") + m.ramBar.ViewAs(s.MemPercent/100) +
 		"  " + styledSize(s.MemUsed) + stMuted.Render(" / ") + styledSize(s.MemTotal) +
 		"  " + styledPct(s.MemPercent)
-	swapLine := "  " + stLabel.Render("Swap: ") + m.swapBar.ViewAs(s.SwapPercent/100) +
+	swapLine := "  " + stLabel.Render("Swap:     ") + m.swapBar.ViewAs(s.SwapPercent/100) +
 		"  " + styledSize(s.SwapUsed) + stMuted.Render(" / ") + styledSize(s.SwapTotal) +
 		"  " + styledPct(s.SwapPercent)
 
 	content := sectionTitle("Memory") + "\n" + ramLine + "\n" + swapLine
-	return panelStyle.Width(innerW).Render(content)
+	return panelStyle.Width(w).Render(content)
 }
 
 // LIPGLOSS THEME
@@ -191,9 +189,9 @@ func (m Model) renderDisk(innerW int) string {
 	s := m.snap
 	maxDisk := math.Max(s.DiskReadPS, s.DiskWritePS)
 	content := sectionTitle("Disk I/O") + "\n" +
-		"  " + stNetLabel.Render("Read:  ") + m.diskReadBar.ViewAs(relativePct(s.DiskReadPS, maxDisk)/100) + "  " + styledRate(s.DiskReadPS) + "\n" +
-		"  " + stNetLabel.Render("Write: ") + m.diskWriteBar.ViewAs(relativePct(s.DiskWritePS, maxDisk)/100) + "  " + styledRate(s.DiskWritePS)
-	return panelStyle.Width(innerW).Render(content)
+		"  " + stNetLabel.Render("Read:     ") + m.diskReadBar.ViewAs(relativePct(s.DiskReadPS, maxDisk)/100) + "  " + styledRate(s.DiskReadPS) + "\n" +
+		"  " + stNetLabel.Render("Write:    ") + m.diskWriteBar.ViewAs(relativePct(s.DiskWritePS, maxDisk)/100) + "  " + styledRate(s.DiskWritePS)
+	return panelStyle.Width(innerW + 4).Render(content)
 }
 
 // LIPGLOSS THEME
@@ -201,9 +199,9 @@ func (m Model) renderNet(innerW int) string {
 	s := m.snap
 	maxNet := math.Max(s.NetUpPS, s.NetDownPS)
 	content := sectionTitle("Network") + "\n" +
-		"  " + stNetLabel.Render("↑ Up:   ") + m.netUpBar.ViewAs(relativePct(s.NetUpPS, maxNet)/100) + "  " + styledRate(s.NetUpPS) + "\n" +
-		"  " + stNetLabel.Render("↓ Down: ") + m.netDownBar.ViewAs(relativePct(s.NetDownPS, maxNet)/100) + "  " + styledRate(s.NetDownPS)
-	return panelStyle.Width(innerW).Render(content)
+		"  " + stNetLabel.Render("↑ Up:     ") + m.netUpBar.ViewAs(relativePct(s.NetUpPS, maxNet)/100) + "  " + styledRate(s.NetUpPS) + "\n" +
+		"  " + stNetLabel.Render("↓ Down:   ") + m.netDownBar.ViewAs(relativePct(s.NetDownPS, maxNet)/100) + "  " + styledRate(s.NetDownPS)
+	return panelStyle.Width(innerW + 4).Render(content)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
