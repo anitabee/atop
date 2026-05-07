@@ -1,17 +1,22 @@
 package ui
 
 import (
-	"atop/internal/metrics"
 	"fmt"
-	"math"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	v := tea.NewView(m.viewString())
+	v.AltScreen = true
+	return v
+}
+
+func (m Model) viewString() string {
 	if m.snap == nil && m.err == nil {
 		return "\n  " + lipgloss.NewStyle().Foreground(colorPurple).Render("Collecting metrics…") +
 			"\n\n  Press q to quit"
@@ -25,20 +30,20 @@ func (m Model) View() string {
 		w = 60
 	}
 
-	parts := []string{renderHeader(m.snap, w), renderCPU(m.snap, w)}
-	if gpu := renderGPU(m.snap, w); gpu != "" {
+	parts := []string{m.renderHeader(w), m.renderCPU(w)}
+	if gpu := m.renderGPU(w); gpu != "" {
 		parts = append(parts, gpu)
 	}
 	parts = append(parts,
-		renderMemory(m.snap, w),
-		renderDiskNet(m.snap, w),
+		m.renderMemory(w),
+		m.renderDiskNet(w),
 		lipgloss.NewStyle().Foreground(colorGray).Render("  q to quit"),
 	)
 	return strings.Join(parts, "\n")
 }
 
 // LIPGLOSS THEME
-func renderHeader(s *metrics.Snapshot, w int) string {
+func (m Model) renderHeader(w int) string {
 	hostname, _ := os.Hostname()
 	logo := lipgloss.NewStyle().Bold(true).Foreground(colorPurple).Render(" atop")
 	rightStr := fmt.Sprintf("%s  %s ", hostname, time.Now().Format("15:04:05"))
@@ -48,7 +53,8 @@ func renderHeader(s *metrics.Snapshot, w int) string {
 }
 
 // LIPGLOSS THEME
-func renderCPU(s *metrics.Snapshot, w int) string {
+func (m Model) renderCPU(w int) string {
+	s := m.snap
 	innerW := w - 4
 
 	label := "CPU"
@@ -59,9 +65,8 @@ func renderCPU(s *metrics.Snapshot, w int) string {
 	gap := max(0, innerW-len(label)-len(loadStr))
 	header := sectionTitle(label) + strings.Repeat(" ", gap) + stSecondary.Render(loadStr)
 
-	barW := max(6, innerW-18)
 	content := header + "\n" +
-		"  " + stLabel.Render("Total:  ") + renderBar(s.CPUTotal, barW) + "  " + styledPct(s.CPUTotal)
+		"  " + stLabel.Render("Total:  ") + m.cpuBar.View() + "  " + styledPct(s.CPUTotal)
 
 	// Apple Silicon P-core / E-core breakdown
 	if s.IsAppleSi && s.NumPCores > 0 && s.NumECores > 0 && len(s.CPUCores) > 0 {
@@ -73,14 +78,14 @@ func renderCPU(s *metrics.Snapshot, w int) string {
 		pAvg := avgSlice(s.CPUCores[:pEnd])
 		eAvg := avgSlice(s.CPUCores[eStart:eEnd])
 
-		content += "\n" + "  " + stLabel.Render("P-Core: ") + renderBar(pAvg, barW) + "  " + styledPct(pAvg)
-		content += "\n" + "  " + stLabel.Render("E-Core: ") + renderBar(eAvg, barW) + "  " + styledPct(eAvg)
+		content += "\n" + "  " + stLabel.Render("P-Core: ") + m.cpuPBar.View() + "  " + styledPct(pAvg)
+		content += "\n" + "  " + stLabel.Render("E-Core: ") + m.cpuEBar.View() + "  " + styledPct(eAvg)
 	}
 
 	// Per-core grid
 	if len(s.CPUCores) > 0 {
 		content += "\n"
-		for _, line := range coreGrid(s.CPUCores, innerW) {
+		for _, line := range m.coreGrid(innerW) {
 			content += "\n" + line
 		}
 	}
@@ -89,19 +94,24 @@ func renderCPU(s *metrics.Snapshot, w int) string {
 }
 
 // LIPGLOSS THEME
-// coreGrid uses renderBar so per-core colours follow the green/yellow/pink thresholds.
-func coreGrid(cores []float64, innerW int) []string {
+// coreGrid uses per-core progress bars so each cell follows the green→yellow→red gradient.
+func (m Model) coreGrid(innerW int) []string {
 	const cellW = 18
 	cols := max(1, innerW/cellW)
 
 	var lines []string
 	var row strings.Builder
-	for i, p := range cores {
-		bar := renderBar(p, 6)
+	for i, p := range m.snap.CPUCores {
+		var bar string
+		if i < len(m.coreBars) {
+			bar = m.coreBars[i].View()
+		} else {
+			bar = renderBar(p, 6)
+		}
 		cell := fmt.Sprintf(" %s %s %4.0f%%",
 			stMuted.Render(fmt.Sprintf("C%02d:", i)), bar, p)
 		row.WriteString(cell)
-		if (i+1)%cols == 0 || i == len(cores)-1 {
+		if (i+1)%cols == 0 || i == len(m.snap.CPUCores)-1 {
 			lines = append(lines, row.String())
 			row.Reset()
 		}
@@ -110,12 +120,12 @@ func coreGrid(cores []float64, innerW int) []string {
 }
 
 // LIPGLOSS THEME
-func renderGPU(s *metrics.Snapshot, w int) string {
+func (m Model) renderGPU(w int) string {
+	s := m.snap
 	if len(s.GPUs) == 0 {
 		return ""
 	}
 	innerW := w - 4
-	barW := max(6, innerW-18)
 
 	var content string
 	for i, g := range s.GPUs {
@@ -128,9 +138,15 @@ func renderGPU(s *metrics.Snapshot, w int) string {
 		} else {
 			content += "\n" + sectionTitle(label)
 		}
-		content += "\n" + "  " + stLabel.Render("Device:   ") + renderBar(g.DeviceUtil, barW) + "  " + styledPct(g.DeviceUtil)
-		content += "\n" + "  " + stLabel.Render("Renderer: ") + renderBar(g.RendererUtil, barW) + "  " + styledPct(g.RendererUtil)
-		content += "\n" + "  " + stLabel.Render("Tiler:    ") + renderBar(g.TilerUtil, barW) + "  " + styledPct(g.TilerUtil)
+		devBar, renBar, tilBar := renderBar(g.DeviceUtil, 6), renderBar(g.RendererUtil, 6), renderBar(g.TilerUtil, 6)
+		if i < len(m.gpuDevBars) {
+			devBar = m.gpuDevBars[i].View()
+			renBar = m.gpuRenBars[i].View()
+			tilBar = m.gpuTilBars[i].View()
+		}
+		content += "\n" + "  " + stLabel.Render("Device:   ") + devBar + "  " + styledPct(g.DeviceUtil)
+		content += "\n" + "  " + stLabel.Render("Renderer: ") + renBar + "  " + styledPct(g.RendererUtil)
+		content += "\n" + "  " + stLabel.Render("Tiler:    ") + tilBar + "  " + styledPct(g.TilerUtil)
 		if g.MemInUse > 0 {
 			content += "\n" + "  " + stLabel.Render("VRAM:     ") + styledSize(g.MemInUse) + stMuted.Render(" in use")
 		}
@@ -140,14 +156,14 @@ func renderGPU(s *metrics.Snapshot, w int) string {
 }
 
 // LIPGLOSS THEME
-func renderMemory(s *metrics.Snapshot, w int) string {
+func (m Model) renderMemory(w int) string {
+	s := m.snap
 	innerW := w - 4
-	barW := max(6, innerW-32)
 
-	ramLine := "  " + stLabel.Render("RAM:  ") + renderBar(s.MemPercent, barW) +
+	ramLine := "  " + stLabel.Render("RAM:  ") + m.ramBar.View() +
 		"  " + styledSize(s.MemUsed) + stMuted.Render(" / ") + styledSize(s.MemTotal) +
 		"  " + styledPct(s.MemPercent)
-	swapLine := "  " + stLabel.Render("Swap: ") + renderBar(s.SwapPercent, barW) +
+	swapLine := "  " + stLabel.Render("Swap: ") + m.swapBar.View() +
 		"  " + styledSize(s.SwapUsed) + stMuted.Render(" / ") + styledSize(s.SwapTotal) +
 		"  " + styledPct(s.SwapPercent)
 
@@ -156,42 +172,34 @@ func renderMemory(s *metrics.Snapshot, w int) string {
 }
 
 // LIPGLOSS THEME
-func renderDiskNet(s *metrics.Snapshot, w int) string {
-	// leftOuter + 1 (separator) + rightOuter = w exactly, so the Network
-	// box's right edge aligns with the full-width panels above.
+func (m Model) renderDiskNet(w int) string {
 	leftOuter := (w - 1) / 2
 	rightOuter := w - 1 - leftOuter
 	leftInner := leftOuter - 4
 	rightInner := rightOuter - 4
 
 	return lipgloss.JoinHorizontal(lipgloss.Top,
-		renderDisk(s, leftInner, max(4, leftInner-22)),
+		m.renderDisk(leftInner),
 		" ",
-		renderNet(s, rightInner, max(4, rightInner-22)),
+		m.renderNet(rightInner),
 	)
 }
 
 // LIPGLOSS THEME
-func renderDisk(s *metrics.Snapshot, innerW, barW int) string {
-	maxVal := math.Max(s.DiskReadPS, s.DiskWritePS)
-	readPct := relativePct(s.DiskReadPS, maxVal)
-	writePct := relativePct(s.DiskWritePS, maxVal)
-
+func (m Model) renderDisk(innerW int) string {
+	s := m.snap
 	content := sectionTitle("Disk I/O") + "\n" +
-		"  " + stNetLabel.Render("Read:  ") + renderBar(readPct, barW) + "  " + styledRate(s.DiskReadPS) + "\n" +
-		"  " + stNetLabel.Render("Write: ") + renderBar(writePct, barW) + "  " + styledRate(s.DiskWritePS)
+		"  " + stNetLabel.Render("Read:  ") + m.diskReadBar.View() + "  " + styledRate(s.DiskReadPS) + "\n" +
+		"  " + stNetLabel.Render("Write: ") + m.diskWriteBar.View() + "  " + styledRate(s.DiskWritePS)
 	return panelStyle.Width(innerW).Render(content)
 }
 
 // LIPGLOSS THEME
-func renderNet(s *metrics.Snapshot, innerW, barW int) string {
-	maxVal := math.Max(s.NetUpPS, s.NetDownPS)
-	upPct := relativePct(s.NetUpPS, maxVal)
-	downPct := relativePct(s.NetDownPS, maxVal)
-
+func (m Model) renderNet(innerW int) string {
+	s := m.snap
 	content := sectionTitle("Network") + "\n" +
-		"  " + stNetLabel.Render("↑ Up:   ") + renderBar(upPct, barW) + "  " + styledRate(s.NetUpPS) + "\n" +
-		"  " + stNetLabel.Render("↓ Down: ") + renderBar(downPct, barW) + "  " + styledRate(s.NetDownPS)
+		"  " + stNetLabel.Render("↑ Up:   ") + m.netUpBar.View() + "  " + styledRate(s.NetUpPS) + "\n" +
+		"  " + stNetLabel.Render("↓ Down: ") + m.netDownBar.View() + "  " + styledRate(s.NetDownPS)
 	return panelStyle.Width(innerW).Render(content)
 }
 

@@ -7,7 +7,7 @@ import (
 
 	"atop/internal/ui"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -19,10 +19,7 @@ var rootCmd = &cobra.Command{
 	Long: `atop is a real-time system performance monitor for macOS.
 Displays CPU, memory, disk I/O, and network metrics without requiring sudo.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p := tea.NewProgram(
-			ui.New(interval),
-			tea.WithAltScreen(),
-		)
+		p := tea.NewProgram(ui.New(interval))
 		_, err := p.Run()
 		return err
 	},
