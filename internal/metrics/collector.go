@@ -74,7 +74,15 @@ type Collector struct {
 	prevNet  []psnet.IOCountersStat
 	prevTime time.Time
 	seeded   bool
+
+	// GPU data is expensive to collect (ioreg subprocess), so we cache it and
+	// refresh every gpuRefreshEvery ticks rather than on every collection.
+	cachedGPUs      []GPUInfo
+	gpuTicksLeft    int
 }
+
+// gpuRefreshEvery controls how often ioreg is spawned (every N Collect calls).
+const gpuRefreshEvery = 5
 
 func New() *Collector {
 	c := &Collector{}
@@ -184,7 +192,12 @@ func (c *Collector) Collect() (*Snapshot, error) {
 		c.prevNet = nets
 	}
 
-	s.GPUs = c.collectGPUs()
+	if c.gpuTicksLeft <= 0 {
+		c.cachedGPUs = c.collectGPUs()
+		c.gpuTicksLeft = gpuRefreshEvery
+	}
+	c.gpuTicksLeft--
+	s.GPUs = c.cachedGPUs
 
 	c.prevTime = now
 	c.seeded = true
