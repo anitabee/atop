@@ -11,6 +11,10 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// Progress bars are rendered with ViewAs(pct) — no SetPercent, no animation,
+// no FrameMsg chains. Bars only need width configured; percentages are passed
+// directly at render time.
+
 // Model is the root bubbletea model.
 type Model struct {
 	collector *metrics.Collector
@@ -118,43 +122,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-	case progress.FrameMsg:
-		var cmds []tea.Cmd
-		var cmd tea.Cmd
-
-		m.cpuBar, cmd = m.cpuBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.cpuPBar, cmd = m.cpuPBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.cpuEBar, cmd = m.cpuEBar.Update(msg)
-		cmds = append(cmds, cmd)
-		for i := range m.coreBars {
-			m.coreBars[i], cmd = m.coreBars[i].Update(msg)
-			cmds = append(cmds, cmd)
-		}
-		for i := range m.gpuDevBars {
-			m.gpuDevBars[i], cmd = m.gpuDevBars[i].Update(msg)
-			cmds = append(cmds, cmd)
-			m.gpuRenBars[i], cmd = m.gpuRenBars[i].Update(msg)
-			cmds = append(cmds, cmd)
-			m.gpuTilBars[i], cmd = m.gpuTilBars[i].Update(msg)
-			cmds = append(cmds, cmd)
-		}
-		m.ramBar, cmd = m.ramBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.swapBar, cmd = m.swapBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.diskReadBar, cmd = m.diskReadBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.diskWriteBar, cmd = m.diskWriteBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.netUpBar, cmd = m.netUpBar.Update(msg)
-		cmds = append(cmds, cmd)
-		m.netDownBar, cmd = m.netDownBar.Update(msg)
-		cmds = append(cmds, cmd)
-
-		return m, tea.Batch(cmds...)
-
 	case resultMsg:
 		if msg.err != nil {
 			m.err = msg.err
@@ -162,9 +129,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.snap = msg.snap
 			m.err = nil
 		}
-		cmds := m.updateBarPercents()
-		cmds = append(cmds, m.scheduleNext())
-		return m, tea.Batch(cmds...)
+		m.ensureBarSlices()
+		return m, m.scheduleNext()
 	}
 
 	return m, nil
@@ -206,26 +172,15 @@ func (m *Model) updateBarWidths() {
 	m.netDownBar.SetWidth(netBarW)
 }
 
-// updateBarPercents calls SetPercent on every bar and returns the resulting cmds.
-func (m *Model) updateBarPercents() []tea.Cmd {
+// ensureBarSlices grows the per-core and per-GPU bar slices to match the
+// current snapshot. Widths are set here; percentages are passed to ViewAs at
+// render time so no FrameMsg animation is triggered.
+func (m *Model) ensureBarSlices() {
 	if m.snap == nil {
-		return nil
+		return
 	}
 	s := m.snap
-	var cmds []tea.Cmd
 
-	cmds = append(cmds, m.cpuBar.SetPercent(s.CPUTotal/100))
-
-	if s.IsAppleSi && s.NumPCores > 0 && s.NumECores > 0 && len(s.CPUCores) > 0 {
-		n := len(s.CPUCores)
-		pEnd := min(s.NumPCores, n)
-		eStart := pEnd
-		eEnd := min(eStart+s.NumECores, n)
-		cmds = append(cmds, m.cpuPBar.SetPercent(avgSlice(s.CPUCores[:pEnd])/100))
-		cmds = append(cmds, m.cpuEBar.SetPercent(avgSlice(s.CPUCores[eStart:eEnd])/100))
-	}
-
-	// Resize per-core slice when core count changes.
 	if len(s.CPUCores) != len(m.coreBars) {
 		m.coreBars = make([]progress.Model, len(s.CPUCores))
 		for i := range m.coreBars {
@@ -233,11 +188,7 @@ func (m *Model) updateBarPercents() []tea.Cmd {
 			m.coreBars[i].SetWidth(6)
 		}
 	}
-	for i, p := range s.CPUCores {
-		cmds = append(cmds, m.coreBars[i].SetPercent(p/100))
-	}
 
-	// Resize GPU slices when GPU count changes.
 	if len(s.GPUs) != len(m.gpuDevBars) {
 		w := m.width
 		if w < 60 {
@@ -256,22 +207,4 @@ func (m *Model) updateBarPercents() []tea.Cmd {
 			m.gpuTilBars[i].SetWidth(gpuBarW)
 		}
 	}
-	for i, g := range s.GPUs {
-		cmds = append(cmds, m.gpuDevBars[i].SetPercent(g.DeviceUtil/100))
-		cmds = append(cmds, m.gpuRenBars[i].SetPercent(g.RendererUtil/100))
-		cmds = append(cmds, m.gpuTilBars[i].SetPercent(g.TilerUtil/100))
-	}
-
-	cmds = append(cmds, m.ramBar.SetPercent(s.MemPercent/100))
-	cmds = append(cmds, m.swapBar.SetPercent(s.SwapPercent/100))
-
-	maxDisk := math.Max(s.DiskReadPS, s.DiskWritePS)
-	cmds = append(cmds, m.diskReadBar.SetPercent(relativePct(s.DiskReadPS, maxDisk)/100))
-	cmds = append(cmds, m.diskWriteBar.SetPercent(relativePct(s.DiskWritePS, maxDisk)/100))
-
-	maxNet := math.Max(s.NetUpPS, s.NetDownPS)
-	cmds = append(cmds, m.netUpBar.SetPercent(relativePct(s.NetUpPS, maxNet)/100))
-	cmds = append(cmds, m.netDownBar.SetPercent(relativePct(s.NetDownPS, maxNet)/100))
-
-	return cmds
 }
