@@ -79,8 +79,8 @@ func (m Model) renderCPU(w int) string {
 		pAvg := avgSlice(s.CPUCores[:pEnd])
 		eAvg := avgSlice(s.CPUCores[eStart:eEnd])
 
-		content += "\n" + "  " + stLabel.Render("P-Core:   ") + m.cpuPBar.ViewAs(pAvg/100) + "  " + styledPct(pAvg)
-		content += "\n" + "  " + stLabel.Render("E-Core:   ") + m.cpuEBar.ViewAs(eAvg/100) + "  " + styledPct(eAvg)
+		content += "\n\n" + "  " + stLabel.Render("P-Core:   ") + m.cpuPBar.ViewAs(pAvg/100) + "  " + styledPct(pAvg)
+		content += "\n\n" + "  " + stLabel.Render("E-Core:   ") + m.cpuEBar.ViewAs(eAvg/100) + "  " + styledPct(eAvg) // SPACING FIX
 	}
 
 	// Per-core grid
@@ -145,8 +145,8 @@ func (m Model) renderGPU(w int) string {
 			tilBar = m.gpuTilBars[i].ViewAs(g.TilerUtil / 100)
 		}
 		content += "\n" + "  " + stLabel.Render("Device:   ") + devBar + "  " + styledPct(g.DeviceUtil)
-		content += "\n" + "  " + stLabel.Render("Renderer: ") + renBar + "  " + styledPct(g.RendererUtil)
-		content += "\n" + "  " + stLabel.Render("Tiler:    ") + tilBar + "  " + styledPct(g.TilerUtil)
+		content += "\n\n" + "  " + stLabel.Render("Renderer: ") + renBar + "  " + styledPct(g.RendererUtil) // SPACING FIX
+		content += "\n\n" + "  " + stLabel.Render("Tiler:    ") + tilBar + "  " + styledPct(g.TilerUtil) // SPACING FIX
 		if g.MemInUse > 0 {
 			content += "\n" + "  " + stLabel.Render("VRAM:     ") + styledSize(g.MemInUse) + stMuted.Render(" in use")
 		}
@@ -166,7 +166,7 @@ func (m Model) renderMemory(w int) string {
 		"  " + styledSize(s.SwapUsed) + stMuted.Render(" / ") + styledSize(s.SwapTotal) +
 		"  " + styledPct(s.SwapPercent)
 
-	content := sectionTitle("Memory") + "\n" + ramLine + "\n" + swapLine
+	content := sectionTitle("Memory") + "\n" + ramLine + "\n\n" + swapLine // SPACING FIX
 	return panelStyle.Width(w).Render(content)
 }
 
@@ -189,7 +189,7 @@ func (m Model) renderDisk(innerW int) string {
 	s := m.snap
 	maxDisk := math.Max(s.DiskReadPS, s.DiskWritePS)
 	content := sectionTitle("Disk I/O") + "\n" +
-		"  " + stNetLabel.Render("Read:     ") + m.diskReadBar.ViewAs(relativePct(s.DiskReadPS, maxDisk)/100) + "  " + styledRate(s.DiskReadPS) + "\n" +
+		"  " + stNetLabel.Render("Read:     ") + m.diskReadBar.ViewAs(relativePct(s.DiskReadPS, maxDisk)/100) + "  " + styledRate(s.DiskReadPS) + "\n\n" + // SPACING FIX
 		"  " + stNetLabel.Render("Write:    ") + m.diskWriteBar.ViewAs(relativePct(s.DiskWritePS, maxDisk)/100) + "  " + styledRate(s.DiskWritePS)
 	return panelStyle.Width(innerW + 4).Render(content)
 }
@@ -199,7 +199,7 @@ func (m Model) renderNet(innerW int) string {
 	s := m.snap
 	maxNet := math.Max(s.NetUpPS, s.NetDownPS)
 	content := sectionTitle("Network") + "\n" +
-		"  " + stNetLabel.Render("↑ Up:     ") + m.netUpBar.ViewAs(relativePct(s.NetUpPS, maxNet)/100) + "  " + styledRate(s.NetUpPS) + "\n" +
+		"  " + stNetLabel.Render("↑ Up:     ") + m.netUpBar.ViewAs(relativePct(s.NetUpPS, maxNet)/100) + "  " + styledRate(s.NetUpPS) + "\n\n" + // SPACING FIX
 		"  " + stNetLabel.Render("↓ Down:   ") + m.netDownBar.ViewAs(relativePct(s.NetDownPS, maxNet)/100) + "  " + styledRate(s.NetDownPS)
 	return panelStyle.Width(innerW + 4).Render(content)
 }
