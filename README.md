@@ -7,7 +7,7 @@ A real-time system performance monitor for macOS, written in Go. Inspired by [as
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-![atop screenshot](atop1.png)
+![atop screenshot](atop2.png)
 
 ## Features
 
