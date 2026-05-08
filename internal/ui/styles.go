@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"image/color"
 	"math"
 	"strings"
@@ -30,31 +29,17 @@ var (
 	colorLightGray = lipgloss.Color("241") // tertiary text
 )
 
-// LIPGLOSS THEME — gradient palette, computed once at startup
+// COLOR FIX — gradient palette, computed once at startup using Blend1D, never during render
 var barGradient [101]color.Color
 
 func init() {
-	type rgb struct{ r, g, b float64 }
-	lerp := func(a, b rgb, t float64) rgb {
-		return rgb{a.r + (b.r-a.r)*t, a.g + (b.g-a.g)*t, a.b + (b.b-a.b)*t}
-	}
-	green  := rgb{0x04, 0xB5, 0x75} // #04B575 — lipgloss neon green
-	yellow := rgb{0xED, 0xFF, 0x82} // #EDFF82 — lipgloss yellow
-	red    := rgb{0xEB, 0x42, 0x68} // #EB4268 — lipgloss hot pink/red
-	for i := 0; i <= 100; i++ {
-		t := float64(i) / 100.0
-		var c rgb
-		if t <= 0.5 {
-			c = lerp(green, yellow, t*2)
-		} else {
-			c = lerp(yellow, red, (t-0.5)*2)
-		}
-		barGradient[i] = lipgloss.Color(fmt.Sprintf("#%02X%02X%02X",
-			int(math.Round(c.r)),
-			int(math.Round(c.g)),
-			int(math.Round(c.b)),
-		))
-	}
+	steps := lipgloss.Blend1D(
+		101,
+		lipgloss.Color("#04B575"), // 0%   neon green
+		lipgloss.Color("#EDFF82"), // 50%  yellow
+		lipgloss.Color("#EB4268"), // 100% hot pink/red
+	)
+	copy(barGradient[:], steps)
 }
 
 func barColorForPct(pct float64) color.Color {
