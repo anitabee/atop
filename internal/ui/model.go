@@ -3,10 +3,12 @@ package ui
 import (
 	"atop/internal/metrics"
 	"image/color"
+	"math"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/bubbles/v2/progress"
+	"charm.land/lipgloss/v2"
 )
 
 // Progress bars are rendered with ViewAs(pct) — no SetPercent, no animation,
@@ -38,13 +40,26 @@ type Model struct {
 	netDownBar  progress.Model
 }
 
-// COLOR FIX — static color lookup: every character of the bar gets the same
-// color keyed on the fill percentage (total), not on character position
-// (current). Gradient is pre-computed once in styles.go init().
+// LIPGLOSS THEME
 func newBar() progress.Model {
+	gradient := lipgloss.Blend1D(101,
+		lipgloss.Color("#04B575"),
+		lipgloss.Color("#EDFF82"),
+		lipgloss.Color("#EB4268"),
+	)
 	return progress.New(
-		progress.WithColorFunc(func(total, _ float64) color.Color {
-			return barColorForPct(total * 100)
+		progress.WithColorFunc(func(total, current float64) color.Color {
+			if total <= 0 {
+				return gradient[0]
+			}
+			idx := int(math.Round(current / total * 100))
+			if idx < 0 {
+				idx = 0
+			}
+			if idx > 100 {
+				idx = 100
+			}
+			return gradient[idx]
 		}),
 		progress.WithoutPercentage(),
 	)
