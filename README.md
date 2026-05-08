@@ -7,19 +7,16 @@ A real-time system performance monitor for macOS, written in Go. Inspired by [as
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey?logo=apple)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
-![atop screenshot](atop2.png)
+![atop screenshot](atop.png)
 
 ## Features
 
 - **CPU** — total usage bar, per-core grid; Apple Silicon shows P-core vs E-core averages
-- **GPU** — device, renderer, and tiler utilization via `ioreg` (works on Apple Silicon and discrete GPUs)
+- **GPU** — device, renderer, and tiler utilization via `ioreg` (works on Apple Silicon)
 - **Memory** — RAM and swap usage with sizes
 - **Disk I/O** — read/write bytes per second across all disks
 - **Network** — upload/download bytes per second
 - **Load averages** — 1 / 5 / 15 minute
-- Rainbow colour theme with per-section accent colours; bars shift to yellow/red at high load
-- Configurable refresh interval
-- No root or `sudo` required
 
 ## Requirements
 
